@@ -26,7 +26,7 @@ class Cfg:
         return k.strip(), v.strip()
 
 
-    def _get_layers(self, lines:list):
+    def _get_layers(self, lines:list) -> (dict, dict):
         param = OrderedDict()
         layer = OrderedDict()
         layers = []
@@ -40,6 +40,7 @@ class Cfg:
 
             # layers
             elif line[0] == '[':
+                print(line)
                 if layer == {}:
                     pass
                 elif layer['layer_name'] == 'param':
@@ -57,11 +58,13 @@ class Cfg:
             # param
             key, value = self._split_key_and_value(line)
             layer[key] = value
+        else:
+            layers.append(layer)
 
         return param, layers
 
 
-    def _dict2lines(self):
+    def _dict2lines(self) -> list:
         lines = []
         # append [net]
         for k, v in self.param.items():
@@ -84,14 +87,39 @@ class Cfg:
 
 
     def write_cfg(self, dst_cfgfile: Path):
+        """output cfg file
+
+        Parameters
+        ----------
+        dst_cfgfile : Path
+            output path
+        """
         with dst_cfgfile.open(mode='w') as f:
             f.writelines('\n'.join(self._dict2lines()))
 
 
+    def _set_class_num(self, class_num: str):
+        print(len(self.layers))
+        for i, layer in enumerate(self.layers):
+            #print(f"layer_name = {layer['layer_name']}")
+            if not layer['layer_name'] == 'yolo':
+                continue
+            print('yolo layer')
+            layer['classes'] = class_num
+            mask_num = len(layer['mask'].split(','))
+            self.layers[i-1]['filters'] = str(mask_num * (int(class_num) + 5))
+
+
+    def set_param(self, key: str, value: str):
+        if key == 'classes':
+            self._set_class_num(value)
+        else:
+            self.param[key] = value
+
+
 if __name__ == '__main__':
-    cfg = Cfg(Path('../_edit_cfg/yolov3.cfg'))
-    print(cfg.param)
-    print(cfg.param.keys())
-    print(f'layers num : {len(cfg.layers)}')
+    cfg = Cfg(Path('./yolov3.cfg'))
+    cfg.set_param('width', '500')
+    cfg.set_param('classes', '18')
     cfg.write_cfg(Path('out.cfg'))
 
